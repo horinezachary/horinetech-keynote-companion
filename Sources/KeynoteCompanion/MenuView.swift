@@ -3,9 +3,9 @@ import KeynoteCompanionCore
 import SwiftUI
 
 struct MenuView: View {
+    // UI state lives on the model, not in @State: on the macOS 27 SDK @State is a macro whose
+    // plugin ships only with Xcode, so a Command Line Tools-only build would fail.
     @ObservedObject var model: AppModel
-    @State private var portText = ""
-    @State private var showSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -19,7 +19,7 @@ struct MenuView: View {
                 triggersSection
             }
             Divider()
-            DisclosureGroup("Settings", isExpanded: $showSettings) { settings }
+            DisclosureGroup("Settings", isExpanded: $model.showSettings) { settings }
             Divider()
             HStack {
                 Text("Keynote Companion \(model.version)")
@@ -31,7 +31,7 @@ struct MenuView: View {
         }
         .padding(14)
         .frame(width: 340)
-        .onAppear { portText = String(model.port) }
+        .onAppear { model.portText = String(model.port) }
     }
 
     // MARK: Sections
@@ -122,11 +122,11 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Port")
-                TextField("7878", text: $portText)
+                TextField("7878", text: $model.portText)
                     .frame(width: 70)
                     .onSubmit(applyPort)
                 Button("Apply", action: applyPort)
-                    .disabled(Int(portText) == model.port)
+                    .disabled(Int(model.portText) == model.port)
             }
             Toggle("Allow other computers to connect", isOn: $model.allowRemote)
             HStack {
@@ -141,8 +141,8 @@ struct MenuView: View {
     }
 
     private func applyPort() {
-        guard let p = Int(portText), (1...65535).contains(p) else {
-            portText = String(model.port)
+        guard let p = Int(model.portText), (1...65535).contains(p) else {
+            model.portText = String(model.port)
             return
         }
         model.port = p
