@@ -41,6 +41,10 @@ final class AppModel: ObservableObject {
             engine.options.fireWhenNotPresenting = fireWhenNotPresenting
         }
     }
+    /// Menu UI state: the port field's text before Apply, and whether Settings is expanded.
+    @Published var portText = ""
+    @Published var showSettings = false
+
     @Published var openAtLogin: Bool {
         didSet { setOpenAtLogin(openAtLogin) }
     }
