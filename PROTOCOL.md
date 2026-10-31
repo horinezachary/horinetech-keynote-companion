@@ -38,7 +38,7 @@ $ nc 127.0.0.1 7878
 Client hello:
 
 ```json
-{"type":"hello","protocol":1,"token":"optional shared secret"}
+{ "type": "hello", "protocol": 1, "token": "optional shared secret" }
 ```
 
 ## Keep-alive
@@ -53,7 +53,7 @@ on that connection the same way.
 ### `hello`
 
 ```json
-{"type":"hello","protocol":1,"app":"KeynoteCompanion","version":"0.1.0"}
+{ "type": "hello", "protocol": 1, "app": "KeynoteCompanion", "version": "0.1.0" }
 ```
 
 ### `state`
@@ -62,28 +62,28 @@ Sent after `hello`, whenever any field changes, and in reply to a `refresh` comm
 
 ```json
 {
-  "type": "state",
-  "keynoteRunning": true,
-  "playing": true,
-  "document": "Keynote Deck",
-  "slide": 5,
-  "slideCount": 40,
-  "notes": "Welcome everyone [CAM1]",
-  "notesPlain": "Welcome everyone",
-  "labels": ["CAM1"]
+	"type": "state",
+	"keynoteRunning": true,
+	"playing": true,
+	"document": "Keynote Deck",
+	"slide": 5,
+	"slideCount": 40,
+	"notes": "Welcome everyone [CAM1]",
+	"notesPlain": "Welcome everyone",
+	"labels": ["CAM1"]
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `keynoteRunning` | Keynote is open. |
-| `playing` | A slideshow is playing. |
-| `document` | Name of the front document, `""` if none. |
-| `slide` | Current slide number as Keynote numbers it (skipped slides are not counted). `0` when unknown. |
-| `slideCount` | Number of slides, skipped slides not counted. |
-| `notes` | Presenter notes of the current slide, newlines normalised to `\n`, tags included. |
-| `notesPlain` | The same notes with every `[...]` tag removed and whitespace tidied. |
-| `labels` | Trigger labels found in the notes, in order, duplicates removed. |
+| Field            | Meaning                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| `keynoteRunning` | Keynote is open.                                                                               |
+| `playing`        | A slideshow is playing.                                                                        |
+| `document`       | Name of the front document, `""` if none.                                                      |
+| `slide`          | Current slide number as Keynote numbers it (skipped slides are not counted). `0` when unknown. |
+| `slideCount`     | Number of slides, skipped slides not counted.                                                  |
+| `notes`          | Presenter notes of the current slide, newlines normalised to `\n`, tags included.              |
+| `notesPlain`     | The same notes with every `[...]` tag removed and whitespace tidied.                           |
+| `labels`         | Trigger labels found in the notes, in order, duplicates removed.                               |
 
 ### `trigger`
 
@@ -91,7 +91,7 @@ One message per label, in the order the labels appear in the notes. The app send
 `state` first, so the module already knows the slide's labels when the triggers arrive.
 
 ```json
-{"type":"trigger","label":"CAM1","slide":5,"index":0,"count":2,"direction":"forward"}
+{ "type": "trigger", "label": "CAM1", "slide": 5, "index": 0, "count": 2, "direction": "forward" }
 ```
 
 `index` is the label's position (from 0) among the `count` labels fired for this slide change.
@@ -100,13 +100,13 @@ One message per label, in the order the labels appear in the notes. The app send
 ### `hb`
 
 ```json
-{"type":"hb"}
+{ "type": "hb" }
 ```
 
 ### `error`
 
 ```json
-{"type":"error","code":"auth","message":"Wrong or missing token"}
+{ "type": "error", "code": "auth", "message": "Wrong or missing token" }
 ```
 
 ## Module to app
@@ -114,19 +114,19 @@ One message per label, in the order the labels appear in the notes. The app send
 ### `cmd`
 
 ```json
-{"type":"cmd","cmd":"next"}
+{ "type": "cmd", "cmd": "next" }
 ```
 
-| `cmd` | Extra fields | Effect |
-| --- | --- | --- |
-| `next` | | Advance (Keynote's `show next`). |
-| `previous` | | Go back (Keynote's `show previous`). |
-| `first` | | Go to the first slide. |
-| `last` | | Go to the last slide. |
-| `goto` | `slide` (integer, 1 or more; a numeric string is accepted) | Go to that slide number. A number past the end goes to the last slide. |
-| `start` | `from`: `beginning` (default), `current` or `slide`; `slide` when `from` is `slide` | Start the slideshow. |
-| `stop` | | Stop the slideshow. |
-| `refresh` | | Reply with a fresh `state` to this client. |
+| `cmd`      | Extra fields                                                                        | Effect                                                                 |
+| ---------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `next`     |                                                                                     | Advance (Keynote's `show next`).                                       |
+| `previous` |                                                                                     | Go back (Keynote's `show previous`).                                   |
+| `first`    |                                                                                     | Go to the first slide.                                                 |
+| `last`     |                                                                                     | Go to the last slide.                                                  |
+| `goto`     | `slide` (integer, 1 or more; a numeric string is accepted)                          | Go to that slide number. A number past the end goes to the last slide. |
+| `start`    | `from`: `beginning` (default), `current` or `slide`; `slide` when `from` is `slide` | Start the slideshow.                                                   |
+| `stop`     |                                                                                     | Stop the slideshow.                                                    |
+| `refresh`  |                                                                                     | Reply with a fresh `state` to this client.                             |
 
 `first`, `last` and `goto` jump within a playing slideshow, or move the editor's selection when
 no slideshow is playing.
@@ -145,9 +145,9 @@ Welcome everyone. [CAM1] [LIGHTS WARM]
 - Labels fire in order when you **arrive on a slide while presenting**, and also when the
   slideshow starts.
 - Going **backwards** onto a slide does not fire its labels unless the app's
-  *Fire labels when going back a slide* option is on (`direction` is then `backward`).
+  _Fire labels when going back a slide_ option is on (`direction` is then `backward`).
 - Moving around the deck **outside a slideshow** does not fire anything unless the app's
-  *Fire labels when not presenting* option is on.
+  _Fire labels when not presenting_ option is on.
 - The first reading after the app starts, or after Keynote launches, never fires, so launching
   mid-show does not repeat the current slide's cues.
 - Editing a slide's notes while on it sends a new `state` but does not fire.
