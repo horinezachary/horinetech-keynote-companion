@@ -50,6 +50,28 @@ SIGN_IDENTITY="Apple Development: Your Name (TEAMID)" scripts/build-app.sh
 `swift run KeynoteCompanion` also works for development, but without an app bundle the
 permission prompt is attributed to your terminal and *Open at login* is unavailable.
 
+
+## Releasing
+
+Pushing a tag such as `v0.1.0` runs `.github/workflows/release.yml`. It tests the app, builds it
+for Apple silicon and Intel, signs it with your Developer ID, notarizes and staples it, and
+publishes a GitHub release with `Keynote-Companion-v0.1.0.zip` attached.
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+It needs these repository secrets (Settings > Secrets and variables > Actions):
+
+| Secret | Value |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12` | Developer ID Application certificate and key exported as .p12, base64-encoded |
+| `MACOS_CERTIFICATE_PASSWORD` | The .p12 export password |
+| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Your Name (TEAMID)` |
+| `NOTARY_KEY_P8` | App Store Connect API key (.p8), base64-encoded |
+| `NOTARY_KEY_ID` | That key's Key ID |
+| `NOTARY_ISSUER_ID` | The App Store Connect Issuer ID |
+
 ## Connecting Companion
 
 1. Open the menu-bar icon. Under **Companion** it lists this Mac's addresses and port, for example `192.168.1.20:7878`.
