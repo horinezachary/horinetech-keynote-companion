@@ -9,7 +9,7 @@ your slides.
 - Lets Companion **control the slideshow**: next, previous, first, last, go to slide, start and stop.
 
 The Companion side lives in
-[horinetech-keynote-companion-module](https://github.com/horinezachary/horinetech-keynote-companion-module).
+[companion-module-horinetech-keynote](https://github.com/horinezachary/companion-module-horinetech-keynote).
 The two talk over a line-based JSON protocol described in [PROTOCOL.md](PROTOCOL.md).
 
 ## Status

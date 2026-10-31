@@ -4,7 +4,7 @@ The contract between the **Keynote Companion** Mac app and its Bitfocus Companio
 Both repositories carry the same copy of this file.
 
 - App: <https://github.com/horinezachary/horinetech-keynote-companion>
-- Module: <https://github.com/horinezachary/horinetech-keynote-companion-module>
+- Module: <https://github.com/horinezachary/companion-module-horinetech-keynote>
 
 ## Transport
 
