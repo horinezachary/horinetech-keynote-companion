@@ -96,10 +96,13 @@ final class AppModel: ObservableObject {
         port = defaults.integer(forKey: Keys.port)
         allowRemote = defaults.bool(forKey: Keys.allowRemote)
         token = defaults.string(forKey: Keys.token) ?? ""
-        appChoice = AppChoice(rawValue: defaults.string(forKey: Keys.appChoice) ?? "") ?? .automatic
+        // Locals, not self: Swift forbids reading self's properties before all are initialised.
+        let choice = AppChoice(rawValue: defaults.string(forKey: Keys.appChoice) ?? "") ?? .automatic
         let lastApp = PresentationApp(rawValue: defaults.string(forKey: Keys.lastApp) ?? "") ?? .keynote
-        activeApp = appChoice.fixed ?? lastApp
-        state = SlideState(snapshot: KeynoteSnapshot(app: activeApp))
+        let startApp = choice.fixed ?? lastApp
+        appChoice = choice
+        activeApp = startApp
+        state = SlideState(snapshot: KeynoteSnapshot(app: startApp))
         lastFrontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
             .flatMap(PresentationApp.init(bundleID:))
         fireOnBackward = defaults.bool(forKey: Keys.fireOnBackward)
