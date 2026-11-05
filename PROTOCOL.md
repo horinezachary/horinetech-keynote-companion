@@ -20,7 +20,7 @@ You can try it by hand:
 ```
 $ nc 127.0.0.1 7878
 {"app":"KeynoteCompanion","protocol":1,"type":"hello","version":"0.1.0"}
-{"document":"My Deck","keynoteRunning":true,"labels":["CAM1"], ... "type":"state"}
+{"app":"keynote","document":"My Deck","keynoteRunning":true,"labels":["CAM1"], ... "type":"state"}
 {"type":"cmd","cmd":"next"}
 ```
 
@@ -63,6 +63,7 @@ Sent after `hello`, whenever any field changes, and in reply to a `refresh` comm
 ```json
 {
 	"type": "state",
+	"app": "keynote",
 	"keynoteRunning": true,
 	"playing": true,
 	"document": "Keynote Deck",
@@ -74,16 +75,17 @@ Sent after `hello`, whenever any field changes, and in reply to a `refresh` comm
 }
 ```
 
-| Field            | Meaning                                                                                        |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| `keynoteRunning` | Keynote is open.                                                                               |
-| `playing`        | A slideshow is playing.                                                                        |
-| `document`       | Name of the front document, `""` if none.                                                      |
-| `slide`          | Current slide number as Keynote numbers it (skipped slides are not counted). `0` when unknown. |
-| `slideCount`     | Number of slides, skipped slides not counted.                                                  |
-| `notes`          | Presenter notes of the current slide, newlines normalised to `\n`, tags included.              |
-| `notesPlain`     | The same notes with every `[...]` tag removed and whitespace tidied.                           |
-| `labels`         | Trigger labels found in the notes, in order, duplicates removed.                               |
+| Field            | Meaning                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `app`            | The presentation app this state describes: `keynote` or `powerpoint`.                                                           |
+| `keynoteRunning` | The app named by `app` is open. (Named for Keynote, which came first; it means PowerPoint when `app` is `powerpoint`.)          |
+| `playing`        | A slideshow is playing.                                                                                                         |
+| `document`       | Name of the front document, `""` if none.                                                                                       |
+| `slide`          | Current slide number as the app numbers it. `0` when unknown. Keynote leaves out skipped slides; PowerPoint counts hidden ones. |
+| `slideCount`     | Number of slides, counted the same way.                                                                                         |
+| `notes`          | Presenter notes of the current slide, newlines normalised to `\n`, tags included.                                               |
+| `notesPlain`     | The same notes with every `[...]` tag removed and whitespace tidied.                                                            |
+| `labels`         | Trigger labels found in the notes, in order, duplicates removed.                                                                |
 
 ### `trigger`
 
@@ -117,19 +119,31 @@ One message per label, in the order the labels appear in the notes. The app send
 { "type": "cmd", "cmd": "next" }
 ```
 
-| `cmd`      | Extra fields                                                                        | Effect                                                                 |
-| ---------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `next`     |                                                                                     | Advance (Keynote's `show next`).                                       |
-| `previous` |                                                                                     | Go back (Keynote's `show previous`).                                   |
-| `first`    |                                                                                     | Go to the first slide.                                                 |
-| `last`     |                                                                                     | Go to the last slide.                                                  |
-| `goto`     | `slide` (integer, 1 or more; a numeric string is accepted)                          | Go to that slide number. A number past the end goes to the last slide. |
-| `start`    | `from`: `beginning` (default), `current` or `slide`; `slide` when `from` is `slide` | Start the slideshow.                                                   |
-| `stop`     |                                                                                     | Stop the slideshow.                                                    |
-| `refresh`  |                                                                                     | Reply with a fresh `state` to this client.                             |
+| `cmd`      | Extra fields                                                                        | Effect                                                                    |
+| ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `next`     |                                                                                     | Advance (Keynote's `show next`, PowerPoint's `go to next slide`).         |
+| `previous` |                                                                                     | Go back (Keynote's `show previous`, PowerPoint's `go to previous slide`). |
+| `first`    |                                                                                     | Go to the first slide.                                                    |
+| `last`     |                                                                                     | Go to the last slide.                                                     |
+| `goto`     | `slide` (integer, 1 or more; a numeric string is accepted)                          | Go to that slide number. A number past the end goes to the last slide.    |
+| `start`    | `from`: `beginning` (default), `current` or `slide`; `slide` when `from` is `slide` | Start the slideshow.                                                      |
+| `stop`     |                                                                                     | Stop the slideshow.                                                       |
+| `refresh`  |                                                                                     | Reply with a fresh `state` to this client.                                |
 
 `first`, `last` and `goto` jump within a playing slideshow, or move the editor's selection when
-no slideshow is playing.
+no slideshow is playing. In PowerPoint, `next` and `previous` also move the editor's selection
+when no slideshow is playing.
+
+Commands go to the app the current `state` names in `app`.
+
+## Keynote and PowerPoint
+
+The app follows one presentation app at a time. Its _Follow_ setting is Automatic (the app that is
+presenting, or if both or neither are, the one used last), Keynote or PowerPoint. When it switches
+apps it sends a new `state` with the new `app`. A switch never fires labels by itself.
+
+`app` was added after version 1 shipped. A state without it comes from an older app and means
+`keynote`. The protocol version stays 1, since nothing existing changed meaning for Keynote.
 
 ## Trigger labels
 
@@ -148,13 +162,14 @@ Welcome everyone. [CAM1] [LIGHTS WARM]
   _Fire labels when going back a slide_ option is on (`direction` is then `backward`).
 - Moving around the deck **outside a slideshow** does not fire anything unless the app's
   _Fire labels when not presenting_ option is on.
-- The first reading after the app starts, or after Keynote launches, never fires, so launching
+- The first reading after the app starts, after Keynote or PowerPoint launches, or after the
+  app switches between them, never fires, so launching
   mid-show does not repeat the current slide's cues.
 - Editing a slide's notes while on it sends a new `state` but does not fire.
-- The app polls Keynote about 7 times a second. Slides that go by faster than that may not fire
+- The app polls about 7 times a second. Slides that go by faster than that may not fire
   their labels.
 
 ## Not in version 1
 
-Build counts ("builds left") are deliberately left out for now. Keynote's scripting interface
-does not report them, and this is tabled until there is a reliable way to detect them.
+Build counts ("builds left") are deliberately left out for now. Neither app's scripting interface
+reports them, and this is tabled until there is a reliable way to detect them.

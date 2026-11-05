@@ -4,10 +4,11 @@ import XCTest
 
 final class TriggerEngineTests: XCTestCase {
     private func snap(
-        _ slide: Int, playing: Bool = true, notes: String = "", document: String = "Deck"
+        _ slide: Int, playing: Bool = true, notes: String = "", document: String = "Deck",
+        app: PresentationApp = .keynote
     ) -> KeynoteSnapshot {
         KeynoteSnapshot(
-            keynoteRunning: true, playing: playing, document: document, slide: slide,
+            app: app, keynoteRunning: true, playing: playing, document: document, slide: slide,
             slideCount: 10, notes: notes)
     }
 
@@ -122,5 +123,14 @@ final class TriggerEngineTests: XCTestCase {
         let u = e.ingest(snap(2, notes: "no tags"))
         XCTAssertNotNil(u.state)
         XCTAssertEqual(u.triggers, [])
+    }
+
+    func testSwitchingAppsDoesNotFire() {
+        var e = TriggerEngine()
+        _ = e.ingest(snap(1))
+        let u = e.ingest(snap(2, notes: "[CAM1]", app: .powerpoint))
+        XCTAssertEqual(u.state?.app, .powerpoint)
+        XCTAssertEqual(u.triggers, [])
+        XCTAssertEqual(e.ingest(snap(3, notes: "[CAM2]", app: .powerpoint)).triggers.map(\.label), ["CAM2"])
     }
 }

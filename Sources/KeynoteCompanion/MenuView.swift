@@ -40,7 +40,7 @@ struct MenuView: View {
         let s = model.state
         VStack(alignment: .leading, spacing: 6) {
             if !s.keynoteRunning {
-                Text("Keynote is not running").font(.headline)
+                Text("\(s.app.displayName) is not running").font(.headline)
             } else if s.document.isEmpty {
                 Text("No presentation open").font(.headline)
             } else {
@@ -48,6 +48,9 @@ struct MenuView: View {
                     Text(s.slide > 0 ? "Slide \(s.slide) of \(s.slideCount)" : "\(s.slideCount) slides")
                         .font(.headline)
                     Spacer()
+                    Text(s.app.displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Text(s.playing ? "Presenting" : "Editing")
                         .font(.caption)
                         .padding(.horizontal, 6)
@@ -66,7 +69,7 @@ struct MenuView: View {
                         .textSelection(.enabled)
                 }
             }
-            if let error = model.keynoteError {
+            if let error = model.appError {
                 Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -120,6 +123,13 @@ struct MenuView: View {
 
     private var settings: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Picker("Follow", selection: $model.appChoice) {
+                ForEach(AppChoice.allCases, id: \.self) { choice in
+                    Text(choice.displayName).tag(choice)
+                }
+            }
+            .pickerStyle(.segmented)
+            .help("Automatic follows whichever app is presenting, or the one you used last.")
             HStack {
                 Text("Port")
                 TextField("7878", text: $model.portText)
