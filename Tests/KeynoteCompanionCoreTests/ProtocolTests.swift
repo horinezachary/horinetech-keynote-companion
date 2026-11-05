@@ -62,6 +62,16 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(obj["notesPlain"] as? String, "Welcome")
         XCTAssertEqual(obj["labels"] as? [String], ["CAM1"])
         XCTAssertNil(obj["buildsLeft"])
+        XCTAssertEqual(obj["app"] as? String, "keynote")
+        XCTAssertEqual(obj["keynoteRunning"] as? Bool, true)
+    }
+
+    func testEncodesPowerPointState() throws {
+        let state = SlideState(
+            snapshot: KeynoteSnapshot(app: .powerpoint, keynoteRunning: true, slide: 2, slideCount: 9))
+        let obj = try json(WireCodec.line(state))
+        XCTAssertEqual(obj["app"] as? String, "powerpoint")
+        XCTAssertEqual(obj["keynoteRunning"] as? Bool, true)
     }
 
     func testEncodesNewlinesEscaped() {

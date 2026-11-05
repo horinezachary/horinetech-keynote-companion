@@ -12,7 +12,7 @@ public struct TriggerOptions: Equatable, Sendable {
     }
 }
 
-/// Turns successive Keynote readings into `state` updates and `trigger` messages.
+/// Turns successive Keynote or PowerPoint readings into `state` updates and `trigger` messages.
 public struct TriggerEngine: Sendable {
     public var options: TriggerOptions
     public private(set) var state: SlideState?
@@ -65,6 +65,8 @@ public struct TriggerEngine: Sendable {
     func arrival(from old: KeynoteSnapshot, to new: KeynoteSnapshot) -> Direction? {
         guard new.keynoteRunning, new.slide > 0 else { return nil }
         if !old.keynoteRunning || old.slide == 0 { return nil }
+        // Switching between Keynote and PowerPoint is like a first reading: it never fires.
+        if new.app != old.app { return nil }
         if new.document != old.document { return .forward }
         if new.playing && !old.playing { return .forward }  // slideshow started
         if new.slide > old.slide { return .forward }

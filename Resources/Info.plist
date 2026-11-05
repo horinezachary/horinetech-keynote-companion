@@ -25,7 +25,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Keynote Companion reads the current slide and presenter notes from Keynote, and moves through the slideshow when Companion asks it to.</string>
+	<string>Keynote Companion reads the current slide and presenter notes from Keynote or PowerPoint, and moves through the slideshow when Companion asks it to.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 </dict>

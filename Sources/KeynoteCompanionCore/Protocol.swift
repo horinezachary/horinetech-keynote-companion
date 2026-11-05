@@ -6,8 +6,38 @@ public let defaultPort: UInt16 = 7878
 /// Lines longer than this are discarded.
 public let maxLineBytes = 1 << 20
 
-/// What the app last read from Keynote.
+/// A presentation app the Mac app can follow.
+public enum PresentationApp: String, Codable, CaseIterable, Sendable {
+    case keynote
+    case powerpoint
+
+    public var displayName: String {
+        switch self {
+        case .keynote: return "Keynote"
+        case .powerpoint: return "PowerPoint"
+        }
+    }
+
+    public var bundleID: String {
+        switch self {
+        case .keynote: return "com.apple.iWork.Keynote"
+        case .powerpoint: return "com.microsoft.Powerpoint"
+        }
+    }
+
+    public init?(bundleID: String) {
+        guard let app = Self.allCases.first(where: { $0.bundleID.lowercased() == bundleID.lowercased() })
+        else { return nil }
+        self = app
+    }
+}
+
+/// What the app last read from the presentation app it follows.
+/// (Named for Keynote, which came first; it covers PowerPoint too.)
 public struct KeynoteSnapshot: Equatable, Sendable {
+    /// Which app this reading came from.
+    public var app: PresentationApp
+    /// The app is running. Kept under this name for protocol compatibility.
     public var keynoteRunning: Bool
     public var playing: Bool
     public var document: String
@@ -17,9 +47,11 @@ public struct KeynoteSnapshot: Equatable, Sendable {
     public var notes: String
 
     public init(
+        app: PresentationApp = .keynote,
         keynoteRunning: Bool = false, playing: Bool = false, document: String = "",
         slide: Int = 0, slideCount: Int = 0, notes: String = ""
     ) {
+        self.app = app
         self.keynoteRunning = keynoteRunning
         self.playing = playing
         self.document = document
@@ -34,6 +66,9 @@ public struct KeynoteSnapshot: Equatable, Sendable {
 /// The `state` message.
 public struct SlideState: Equatable, Codable, Sendable {
     public var type = "state"
+    /// `keynote` or `powerpoint`: the app this state describes.
+    public var app: PresentationApp
+    /// The app named by `app` is running. Named for Keynote for compatibility.
     public var keynoteRunning: Bool
     public var playing: Bool
     public var document: String
@@ -45,6 +80,7 @@ public struct SlideState: Equatable, Codable, Sendable {
 
     public init(snapshot: KeynoteSnapshot) {
         let parsed = NotesParser.parse(snapshot.notes)
+        app = snapshot.app
         keynoteRunning = snapshot.keynoteRunning
         playing = snapshot.playing
         document = snapshot.document

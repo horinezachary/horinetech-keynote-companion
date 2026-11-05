@@ -1,8 +1,9 @@
+import AppKit
 import Foundation
 import KeynoteCompanionCore
 import ServiceManagement
 
-/// Ties the Keynote bridge, the trigger rules and the Companion server together.
+/// Ties the presentation bridge (Keynote or PowerPoint), the trigger rules and the Companion server together.
 /// Lives on the main thread: timers, network callbacks and bridge callbacks all arrive there.
 final class AppModel: ObservableObject {
     struct FiredTrigger: Identifiable {
@@ -12,7 +13,9 @@ final class AppModel: ObservableObject {
     }
 
     @Published private(set) var state = SlideState(snapshot: .notRunning)
-    @Published private(set) var keynoteError: String?
+    @Published private(set) var appError: String?
+    /// The app being followed: the one whose slides Companion sees and controls.
+    @Published private(set) var activeApp: PresentationApp
     @Published private(set) var clientCount = 0
     @Published private(set) var serverStatus = "Starting"
     @Published private(set) var recentTriggers: [FiredTrigger] = []
@@ -28,6 +31,12 @@ final class AppModel: ObservableObject {
     }
     @Published var token: String {
         didSet { defaults.set(token, forKey: Keys.token) }
+    }
+    @Published var appChoice: AppChoice {
+        didSet {
+            defaults.set(appChoice.rawValue, forKey: Keys.appChoice)
+            poll()
+        }
     }
     @Published var fireOnBackward: Bool {
         didSet {
@@ -51,7 +60,10 @@ final class AppModel: ObservableObject {
 
     let version: String
     private let defaults = UserDefaults.standard
-    private let bridge = KeynoteBridge()
+    private let bridge = PresentationBridge()
+    /// Whichever of Keynote and PowerPoint was most recently brought to the front.
+    private var lastFrontmost: PresentationApp?
+    private var activationObserver: NSObjectProtocol?
     private let server: CompanionServer
     private var engine: TriggerEngine
     private var pollTimer: Timer?
@@ -61,6 +73,8 @@ final class AppModel: ObservableObject {
         static let port = "port"
         static let allowRemote = "allowRemote"
         static let token = "token"
+        static let appChoice = "appChoice"
+        static let lastApp = "lastApp"
         static let fireOnBackward = "fireOnBackward"
         static let fireWhenNotPresenting = "fireWhenNotPresenting"
     }
@@ -73,6 +87,8 @@ final class AppModel: ObservableObject {
             Keys.port: Int(defaultPort),
             Keys.allowRemote: true,
             Keys.token: "",
+            Keys.appChoice: AppChoice.automatic.rawValue,
+            Keys.lastApp: PresentationApp.keynote.rawValue,
             Keys.fireOnBackward: false,
             Keys.fireWhenNotPresenting: false,
         ])
@@ -80,6 +96,12 @@ final class AppModel: ObservableObject {
         port = defaults.integer(forKey: Keys.port)
         allowRemote = defaults.bool(forKey: Keys.allowRemote)
         token = defaults.string(forKey: Keys.token) ?? ""
+        appChoice = AppChoice(rawValue: defaults.string(forKey: Keys.appChoice) ?? "") ?? .automatic
+        let lastApp = PresentationApp(rawValue: defaults.string(forKey: Keys.lastApp) ?? "") ?? .keynote
+        activeApp = appChoice.fixed ?? lastApp
+        state = SlideState(snapshot: KeynoteSnapshot(app: activeApp))
+        lastFrontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            .flatMap(PresentationApp.init(bundleID:))
         fireOnBackward = defaults.bool(forKey: Keys.fireOnBackward)
         fireWhenNotPresenting = defaults.bool(forKey: Keys.fireWhenNotPresenting)
         openAtLogin = SMAppService.mainApp.status == .enabled
@@ -97,6 +119,15 @@ final class AppModel: ObservableObject {
             self?.handle(command, from: client)
         }
         restartServer()
+
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            if let id = app?.bundleIdentifier, let presentationApp = PresentationApp(bundleID: id) {
+                self?.lastFrontmost = presentationApp
+            }
+        }
 
         let timer = Timer(timeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
             self?.poll()
@@ -121,9 +152,9 @@ final class AppModel: ObservableObject {
             client?.send(WireCodec.line(state))
             return
         }
-        bridge.perform(command) { [weak self] result in
+        bridge.perform(command, on: activeApp) { [weak self] result in
             if case .failure(let error) = result {
-                self?.keynoteError = error.localizedDescription
+                self?.appError = error.localizedDescription
             }
             self?.poll()
         }
@@ -132,15 +163,23 @@ final class AppModel: ObservableObject {
     private func poll() {
         guard !reading else { return }
         reading = true
-        bridge.read { [weak self] result in
+        // Automatic mode reads both apps, to see which one is presenting.
+        let apps = appChoice.fixed.map { [$0] } ?? PresentationApp.allCases
+        bridge.read(apps) { [weak self] readings, errors in
             guard let self else { return }
             self.reading = false
-            switch result {
-            case .success(let snapshot):
-                self.keynoteError = nil
+            let app = SourcePicker.pick(
+                self.appChoice, readings: readings, lastFrontmost: self.lastFrontmost,
+                current: self.activeApp)
+            if app != self.activeApp {
+                self.activeApp = app
+                self.defaults.set(app.rawValue, forKey: Keys.lastApp)
+            }
+            if let error = errors[app] {
+                self.appError = error.localizedDescription
+            } else if let snapshot = readings[app] {
+                self.appError = nil
                 self.ingest(snapshot)
-            case .failure(let error):
-                self.keynoteError = error.localizedDescription
             }
         }
     }
@@ -166,7 +205,7 @@ final class AppModel: ObservableObject {
         do {
             if on { try service.register() } else { try service.unregister() }
         } catch {
-            keynoteError = "Open at login: \(error.localizedDescription)"
+            appError = "Open at login: \(error.localizedDescription)"
         }
     }
 }
