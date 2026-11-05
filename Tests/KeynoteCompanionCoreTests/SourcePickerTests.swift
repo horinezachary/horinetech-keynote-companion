@@ -20,17 +20,17 @@ final class SourcePickerTests: XCTestCase {
     }
 
     func testPresentingAppWins() {
-        let r = [.keynote: running(.keynote), .powerpoint: running(.powerpoint, playing: true)]
+        let r: [PresentationApp: KeynoteSnapshot] = [.keynote: running(.keynote), .powerpoint: running(.powerpoint, playing: true)]
         XCTAssertEqual(pick(r, front: .keynote, current: .keynote), .powerpoint)
     }
 
     func testBothPresentingStaysPut() {
-        let r = [.keynote: running(.keynote, playing: true), .powerpoint: running(.powerpoint, playing: true)]
+        let r: [PresentationApp: KeynoteSnapshot] = [.keynote: running(.keynote, playing: true), .powerpoint: running(.powerpoint, playing: true)]
         XCTAssertEqual(pick(r, front: .powerpoint, current: .keynote), .keynote)
     }
 
     func testNeitherPresentingFollowsFrontmost() {
-        let r = [.keynote: running(.keynote), .powerpoint: running(.powerpoint)]
+        let r: [PresentationApp: KeynoteSnapshot] = [.keynote: running(.keynote), .powerpoint: running(.powerpoint)]
         XCTAssertEqual(pick(r, front: .powerpoint, current: .keynote), .powerpoint)
         XCTAssertEqual(pick(r, front: nil, current: .powerpoint), .powerpoint)
     }
